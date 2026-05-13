@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, User, Play, ChevronLeft, ChevronRight, Crown, Star, X, Volume2, VolumeX, Maximize, Pause, SkipBack, SkipForward } from 'lucide-react';
+import { Search, Bell, User, Play, ChevronLeft, ChevronRight, Crown, Star, X, Volume2, VolumeX, Maximize, Pause, SkipBack, SkipForward, LogOut } from 'lucide-react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import LoginModal from './components/LoginModal';
 
 interface Video {
   id: number;
@@ -13,6 +15,9 @@ interface Video {
 }
 
 const App: React.FC = () => {
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('首页');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -312,9 +317,47 @@ const App: React.FC = () => {
             <button className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white text-sm px-5 py-2 rounded-full transition-all shadow-lg hover:shadow-xl">
               <Crown className="w-4 h-4" /> VIP会员
             </button>
-            <button className="text-gray-400 hover:text-white transition-colors">
-              <User className="w-5 h-5" />
-            </button>
+            {isLoading ? (
+              <div className="w-8 h-8 rounded-full bg-gray-700 animate-pulse" />
+            ) : isAuthenticated && user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700 text-white text-sm px-3 py-1.5 rounded-full transition-all"
+                >
+                  <img
+                    src={user.avatar}
+                    alt={user.username}
+                    className="w-6 h-6 rounded-full bg-gray-600"
+                  />
+                  <span className="max-w-20 truncate">{user.username}</span>
+                </button>
+                {showUserMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-700">
+                      <p className="text-white text-sm font-medium">{user.username}</p>
+                      <p className="text-gray-400 text-xs">已登录</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        logout();
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors text-sm"
+                    >
+                      <LogOut className="w-4 h-4" /> 退出登录
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <User className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -585,8 +628,19 @@ const App: React.FC = () => {
 
       {/* Video Player Modal */}
       {selectedVideo && <VideoModal video={selectedVideo} />}
+
+      {/* Login Modal */}
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
     </div>
   );
 };
 
-export default App;
+const AppWrapper: React.FC = () => {
+  return (
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  );
+};
+
+export default AppWrapper;
