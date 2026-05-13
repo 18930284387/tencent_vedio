@@ -1,0 +1,21 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 8ad439c..1a7592b 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -29,7 +29,7 @@ const App: React.FC = () => {
+   ];
+ 
+   const tabs = ['首页', '电视剧', '电影', '综艺', '动漫', '纪录片'];
+-  const categories = ['全部', '热门', '最新', '好评', '免费', 'VIP'];
++  const categories = ['全部', '热门', '最新', '好评', '免费'];
+ 
+   const videos: Video[] = [
+     { id: 1, title: '流浪地球3', cover: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=300&h=420', category: '电影', rating: 9.5, episode: '高清', isVip: true, description: '太阳即将毁灭，人类在地球表面建造出巨大的推进器，寻找新的家园。面对前所未有的危机，主人公刘培强将再次踏上拯救地球的征程。' },
+@@ -48,7 +48,6 @@ const App: React.FC = () => {
+ 
+   const filteredVideos = videos.filter(video => {
+     if (activeCategory === '全部') return true;
+-    if (activeCategory === 'VIP') return video.isVip;
+     if (activeCategory === '免费') return !video.isVip;
+     if (activeCategory === '热门') return video.rating && video.rating >= 9;
+     if (activeCategory === '最新') return video.id > 5;
