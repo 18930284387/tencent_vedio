@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, User, Play, ChevronLeft, ChevronRight, Crown, Star, X, Volume2, VolumeX, Maximize, Pause, SkipBack, SkipForward } from 'lucide-react';
+import { Search, Bell, User, Play, ChevronLeft, ChevronRight, Crown, Star, X, Volume2, VolumeX, Maximize, Pause, SkipBack, SkipForward, LogOut } from 'lucide-react';
 
 interface Video {
   id: number;
@@ -21,6 +21,13 @@ const App: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [activeCategory, setActiveCategory] = useState('全部');
   const [showSearchResults, setShowSearchResults] = useState(false);
+
+  const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   const banners = [
     { id: 1, title: '流浪地球3', subtitle: '2025年度科幻巨制震撼来袭', image: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=1400&h=500' },
@@ -61,6 +68,43 @@ const App: React.FC = () => {
     : [];
 
   const categoryVideos = (category: string) => videos.filter(v => v.category === category).slice(0, 6);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('aurora_user');
+    if (storedUser) {
+      try {
+        setCurrentUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error('Failed to parse stored user', e);
+      }
+    }
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginUsername.trim() || !loginPassword.trim()) {
+      setLoginError('请输入用户名和密码');
+      return;
+    }
+    if (loginPassword.length < 6) {
+      setLoginError('密码长度不能少于6位');
+      return;
+    }
+    // Simulate login success
+    const user = { username: loginUsername };
+    setCurrentUser(user);
+    localStorage.setItem('aurora_user', JSON.stringify(user));
+    setShowLoginModal(false);
+    setLoginUsername('');
+    setLoginPassword('');
+    setLoginError('');
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('aurora_user');
+    setShowUserMenu(false);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -312,15 +356,49 @@ const App: React.FC = () => {
             <button className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white text-sm px-5 py-2 rounded-full transition-all shadow-lg hover:shadow-xl">
               <Crown className="w-4 h-4" /> VIP会员
             </button>
-            <button className="text-gray-400 hover:text-white transition-colors">
-              <User className="w-5 h-5" />
-            </button>
+            <div className="relative">
+              {currentUser ? (
+                <div 
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold">
+                    {currentUser.username.charAt(0).toUpperCase()}
+                  </div>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setShowLoginModal(true)}
+                  className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+                >
+                  <User className="w-5 h-5" />
+                  <span className="text-sm hidden sm:inline">登录</span>
+                </button>
+              )}
+              {showUserMenu && currentUser && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-gray-800 rounded-xl overflow-hidden shadow-2xl border border-gray-700 py-2">
+                  <div className="px-4 py-2 border-b border-gray-700 mb-1">
+                    <p className="text-white text-sm truncate font-medium">{currentUser.username}</p>
+                    <p className="text-gray-400 text-xs mt-1">欢迎回来</p>
+                  </div>
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" /> 退出登录
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="pt-20" onClick={() => setShowSearchResults(false)}>
+      <main className="pt-20" onClick={() => {
+        setShowSearchResults(false);
+        setShowUserMenu(false);
+      }}>
         {/* Banner Carousel */}
         <div className="relative h-96 overflow-hidden group">
           <div
@@ -585,6 +663,52 @@ const App: React.FC = () => {
 
       {/* Video Player Modal */}
       {selectedVideo && <VideoModal video={selectedVideo} />}
+
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md p-8 relative shadow-2xl">
+            <button 
+              onClick={() => setShowLoginModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">登录极光视频</h2>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">用户名</label>
+                <input 
+                  type="text" 
+                  value={loginUsername}
+                  onChange={(e) => setLoginUsername(e.target.value)}
+                  placeholder="请输入用户名"
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">密码</label>
+                <input 
+                  type="password" 
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="请输入密码 (至少6位)"
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              {loginError && (
+                <p className="text-red-500 text-sm">{loginError}</p>
+              )}
+              <button 
+                type="submit"
+                className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white font-bold py-3 rounded-lg mt-6 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                登录 / 注册
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
