@@ -1,5 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Bell, User, Play, ChevronLeft, ChevronRight, Crown, Star, X, Volume2, VolumeX, Maximize, Pause, SkipBack, SkipForward } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import {
+  Search,
+  Bell,
+  User,
+  Play,
+  ChevronLeft,
+  ChevronRight,
+  Crown,
+  Star,
+  X,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Pause,
+  SkipBack,
+  SkipForward,
+  LogIn,
+  LogOut,
+  ShieldCheck,
+} from 'lucide-react';
 
 interface Video {
   id: number;
@@ -12,6 +31,98 @@ interface Video {
   description?: string;
 }
 
+interface AuthUser {
+  username: string;
+  displayName: string;
+  loginAt: string;
+}
+
+interface LoginForm {
+  identifier: string;
+  password: string;
+}
+
+interface LoginErrors {
+  identifier?: string;
+  password?: string;
+  submit?: string;
+}
+
+interface MockAccount {
+  username: string;
+  email: string;
+  phone: string;
+  password: string;
+  displayName: string;
+}
+
+const AUTH_STORAGE_KEY = 'aurora-video-auth-user';
+
+const banners = [
+  { id: 1, title: '流浪地球3', subtitle: '2025年度科幻巨制震撼来袭', image: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=1400&h=500' },
+  { id: 2, title: '复仇者联盟：终局之战', subtitle: '漫威英雄终极对决', image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=1400&h=500' },
+  { id: 3, title: '阿凡达：水之道', subtitle: '视觉盛宴再度升级', image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=1400&h=500' },
+];
+
+const tabs = ['首页', '电视剧', '电影', '综艺', '动漫', '纪录片'];
+const categories = ['全部', '热门', '最新', '好评', '免费', 'VIP'];
+
+const mockAccounts: MockAccount[] = [
+  {
+    username: 'aurora',
+    email: 'aurora@example.com',
+    phone: '13800000000',
+    password: '123456',
+    displayName: '极光观影官',
+  },
+  {
+    username: 'demo',
+    email: 'demo@example.com',
+    phone: '13900000000',
+    password: 'demo123',
+    displayName: '演示用户',
+  },
+];
+
+const videos: Video[] = [
+  { id: 1, title: '流浪地球3', cover: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=300&h=420', category: '电影', rating: 9.5, episode: '高清', isVip: true, description: '太阳即将毁灭，人类在地球表面建造出巨大的推进器，寻找新的家园。面对前所未有的危机，主人公刘培强将再次踏上拯救地球的征程。' },
+  { id: 2, title: '星际穿越', cover: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?auto=format&fit=crop&q=80&w=300&h=420', category: '电影', rating: 9.4, episode: '高清', isVip: false, description: '一队探险家利用他们针对虫洞的新发现，超越人类太空旅行的极限，从而开始在广袤的宇宙中进行星际航行的故事。' },
+  { id: 3, title: '盗墓笔记', cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=300&h=420', category: '电视剧', rating: 8.8, episode: '更新至24集', isVip: true, description: '五十年前，一群长沙土夫子挖到了一件战国古墓，从此开启了一段惊心动魄的盗墓之旅。' },
+  { id: 4, title: '狂飙', cover: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=300&h=420', category: '电视剧', rating: 9.1, episode: '全39集', isVip: false, description: '讲述了以刑警安欣为代表的正义力量，与黑恶势力及其保护伞展开长达二十年的生死较量。' },
+  { id: 5, title: '海贼王', cover: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=300&h=420', category: '动漫', rating: 9.7, episode: '更新1089集', isVip: true, description: '路飞与他的伙伴们踏上寻找one piece的大冒险旅程。' },
+  { id: 6, title: '奔跑吧', cover: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&q=80&w=300&h=420', category: '综艺', rating: 8.5, episode: '更新至第8期', isVip: false, description: '全新一季跑男团再度集结，带来更多欢笑与挑战。' },
+  { id: 7, title: '冰雪奇缘', cover: 'https://images.unsplash.com/photo-1551244072-5d12893278ab?auto=format&fit=crop&q=80&w=300&h=420', category: '动漫', rating: 9.0, episode: '高清', isVip: false, description: '讲述了小国阿伦黛尔的公主艾莎，天生具有制造冰雪的能力，她与妹妹安娜一起拯救王国的故事。' },
+  { id: 8, title: '极限挑战', cover: 'https://images.unsplash.com/photo-1574267432553-4b4628081c31?auto=format&fit=crop&q=80&w=300&h=420', category: '综艺', rating: 8.9, episode: '更新至第10期', isVip: true, description: '全新极限男人帮，挑战不可能完成的任务！' },
+  { id: 9, title: '地球脉动', cover: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&q=80&w=300&h=420', category: '纪录片', rating: 9.8, episode: '全11集', isVip: true, description: 'BBC经典纪录片，带你领略地球上最壮观的自然景观。' },
+  { id: 10, title: '舌尖上的中国', cover: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=300&h=420', category: '纪录片', rating: 9.3, episode: '全7集', isVip: false, description: '探索中国各地的美食文化，感受舌尖上的中国。' },
+  { id: 11, title: '盗梦空间', cover: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=300&h=420', category: '电影', rating: 9.3, episode: '高清', isVip: true, description: '道姆·柯布是一位经验老道的窃贼，他在梦境中偷取别人思维中的秘密。' },
+  { id: 12, title: '鬼灭之刃', cover: 'https://images.unsplash.com/photo-1560972550-aba3456b5564?auto=format&fit=crop&q=80&w=300&h=420', category: '动漫', rating: 9.6, episode: '更新至26集', isVip: true, description: '为了拯救被鬼杀死的家人和变成鬼的妹妹，炭治郎踏上了斩鬼的道路。' },
+];
+
+const getStoredAuthUser = (): AuthUser | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const storedUser = window.localStorage.getItem(AUTH_STORAGE_KEY);
+
+  if (!storedUser) {
+    return null;
+  }
+
+  try {
+    const parsedUser = JSON.parse(storedUser) as AuthUser;
+
+    if (parsedUser.username && parsedUser.displayName && parsedUser.loginAt) {
+      return parsedUser;
+    }
+  } catch {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+
+  return null;
+};
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('首页');
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,32 +132,15 @@ const App: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [activeCategory, setActiveCategory] = useState('全部');
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => getStoredAuthUser());
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginForm, setLoginForm] = useState<LoginForm>({ identifier: '', password: '' });
+  const [loginErrors, setLoginErrors] = useState<LoginErrors>({});
+  const [loginHint, setLoginHint] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const banners = [
-    { id: 1, title: '流浪地球3', subtitle: '2025年度科幻巨制震撼来袭', image: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=1400&h=500' },
-    { id: 2, title: '复仇者联盟：终局之战', subtitle: '漫威英雄终极对决', image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=1400&h=500' },
-    { id: 3, title: '阿凡达：水之道', subtitle: '视觉盛宴再度升级', image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=1400&h=500' },
-  ];
-
-  const tabs = ['首页', '电视剧', '电影', '综艺', '动漫', '纪录片'];
-  const categories = ['全部', '热门', '最新', '好评', '免费', 'VIP'];
-
-  const videos: Video[] = [
-    { id: 1, title: '流浪地球3', cover: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=300&h=420', category: '电影', rating: 9.5, episode: '高清', isVip: true, description: '太阳即将毁灭，人类在地球表面建造出巨大的推进器，寻找新的家园。面对前所未有的危机，主人公刘培强将再次踏上拯救地球的征程。' },
-    { id: 2, title: '星际穿越', cover: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?auto=format&fit=crop&q=80&w=300&h=420', category: '电影', rating: 9.4, episode: '高清', isVip: false, description: '一队探险家利用他们针对虫洞的新发现，超越人类太空旅行的极限，从而开始在广袤的宇宙中进行星际航行的故事。' },
-    { id: 3, title: '盗墓笔记', cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=300&h=420', category: '电视剧', rating: 8.8, episode: '更新至24集', isVip: true, description: '五十年前，一群长沙土夫子挖到了一件战国古墓，从此开启了一段惊心动魄的盗墓之旅。' },
-    { id: 4, title: '狂飙', cover: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=300&h=420', category: '电视剧', rating: 9.1, episode: '全39集', isVip: false, description: '讲述了以刑警安欣为代表的正义力量，与黑恶势力及其保护伞展开长达二十年的生死较量。' },
-    { id: 5, title: '海贼王', cover: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=300&h=420', category: '动漫', rating: 9.7, episode: '更新1089集', isVip: true, description: '路飞与他的伙伴们踏上寻找one piece的大冒险旅程。' },
-    { id: 6, title: '奔跑吧', cover: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&q=80&w=300&h=420', category: '综艺', rating: 8.5, episode: '更新至第8期', isVip: false, description: '全新一季跑男团再度集结，带来更多欢笑与挑战。' },
-    { id: 7, title: '冰雪奇缘', cover: 'https://images.unsplash.com/photo-1551244072-5d12893278ab?auto=format&fit=crop&q=80&w=300&h=420', category: '动漫', rating: 9.0, episode: '高清', isVip: false, description: '讲述了小国阿伦黛尔的公主艾莎，天生具有制造冰雪的能力，她与妹妹安娜一起拯救王国的故事。' },
-    { id: 8, title: '极限挑战', cover: 'https://images.unsplash.com/photo-1574267432553-4b4628081c31?auto=format&fit=crop&q=80&w=300&h=420', category: '综艺', rating: 8.9, episode: '更新至第10期', isVip: true, description: '全新极限男人帮，挑战不可能完成的任务！' },
-    { id: 9, title: '地球脉动', cover: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&q=80&w=300&h=420', category: '纪录片', rating: 9.8, episode: '全11集', isVip: true, description: 'BBC经典纪录片，带你领略地球上最壮观的自然景观。' },
-    { id: 10, title: '舌尖上的中国', cover: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=300&h=420', category: '纪录片', rating: 9.3, episode: '全7集', isVip: false, description: '探索中国各地的美食文化，感受舌尖上的中国。' },
-    { id: 11, title: '盗梦空间', cover: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=300&h=420', category: '电影', rating: 9.3, episode: '高清', isVip: true, description: '道姆·柯布是一位经验老道的窃贼，他在梦境中偷取别人思维中的秘密。' },
-    { id: 12, title: '鬼灭之刃', cover: 'https://images.unsplash.com/photo-1560972550-aba3456b5564?auto=format&fit=crop&q=80&w=300&h=420', category: '动漫', rating: 9.6, episode: '更新至26集', isVip: true, description: '为了拯救被鬼杀死的家人和变成鬼的妹妹，炭治郎踏上了斩鬼的道路。' },
-  ];
-
-  const filteredVideos = videos.filter(video => {
+  const filteredVideos = videos.filter((video) => {
+    if (activeTab !== '首页' && video.category !== activeTab) return false;
     if (activeCategory === '全部') return true;
     if (activeCategory === 'VIP') return video.isVip;
     if (activeCategory === '免费') return !video.isVip;
@@ -56,18 +150,32 @@ const App: React.FC = () => {
     return true;
   });
 
-  const searchedVideos = searchQuery 
-    ? videos.filter(v => v.title.toLowerCase().includes(searchQuery.toLowerCase()))
+  const searchedVideos = searchQuery
+    ? videos.filter((video) => video.title.toLowerCase().includes(searchQuery.toLowerCase()))
     : [];
 
-  const categoryVideos = (category: string) => videos.filter(v => v.category === category).slice(0, 6);
+  const categoryVideos = (category: string) => videos.filter((video) => video.category === category).slice(0, 6);
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    const timer = window.setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % banners.length);
     }, 5000);
-    return () => clearInterval(timer);
+
+    return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (authUser) {
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
+      return;
+    }
+
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  }, [authUser]);
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % banners.length);
@@ -77,10 +185,124 @@ const App: React.FC = () => {
     setCurrentSlide((prev) => (prev - 1 + banners.length) % banners.length);
   };
 
+  const resetLoginState = () => {
+    setLoginForm({ identifier: '', password: '' });
+    setLoginErrors({});
+    setLoginHint('');
+    setIsSubmitting(false);
+  };
+
+  const openLoginModal = (hint = '') => {
+    setShowLoginModal(true);
+    setLoginHint(hint);
+    setLoginErrors({});
+    setLoginForm({ identifier: '', password: '' });
+  };
+
+  const closeLoginModal = () => {
+    setShowLoginModal(false);
+    resetLoginState();
+  };
+
+  const validateLoginForm = () => {
+    const errors: LoginErrors = {};
+    const identifier = loginForm.identifier.trim();
+    const password = loginForm.password.trim();
+
+    if (!identifier) {
+      errors.identifier = '请输入用户名、邮箱或手机号';
+    } else if (identifier.includes('@') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) {
+      errors.identifier = '邮箱格式不正确';
+    } else if (/^1\d{10}$/.test(identifier) === false && identifier.length < 3 && !identifier.includes('@')) {
+      errors.identifier = '账号至少 3 个字符';
+    }
+
+    if (!password) {
+      errors.password = '请输入密码';
+    } else if (password.length < 6) {
+      errors.password = '密码至少 6 位';
+    }
+
+    return errors;
+  };
+
+  const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const errors = validateLoginForm();
+
+    if (errors.identifier || errors.password) {
+      setLoginErrors(errors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setLoginErrors({});
+
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+
+    const identifier = loginForm.identifier.trim();
+    const password = loginForm.password.trim();
+
+    const matchedAccount = mockAccounts.find((account) => {
+      const matchesIdentifier =
+        account.username === identifier || account.email === identifier || account.phone === identifier;
+
+      return matchesIdentifier && account.password === password;
+    });
+
+    if (!matchedAccount) {
+      setIsSubmitting(false);
+      setLoginErrors({ submit: '账号或密码不正确，请使用演示账号登录' });
+      return;
+    }
+
+    setAuthUser({
+      username: matchedAccount.username,
+      displayName: matchedAccount.displayName,
+      loginAt: new Date().toISOString(),
+    });
+    setIsSubmitting(false);
+    closeLoginModal();
+  };
+
+  const handleLogout = () => {
+    setAuthUser(null);
+    setSelectedVideo(null);
+    setIsPlaying(false);
+    setIsMuted(false);
+    closeLoginModal();
+  };
+
+  const handleOpenVideo = (video: Video) => {
+    if (!authUser && video.isVip) {
+      openLoginModal(`登录后即可观看《${video.title}》等 VIP 内容`);
+      return;
+    }
+
+    setSelectedVideo(video);
+    setIsPlaying(false);
+  };
+
+  const handlePrimaryBannerAction = () => {
+    if (!authUser) {
+      openLoginModal('登录后可同步观影状态，并解锁更多会员内容');
+      return;
+    }
+
+    handleOpenVideo(videos[0]);
+  };
+
+  const formatLoginTime = (loginAt: string) => {
+    const date = new Date(loginAt);
+
+    return `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  };
+
   const VideoCard: React.FC<{ video: Video }> = ({ video }) => (
     <div
       className="relative group cursor-pointer flex-shrink-0"
-      onClick={() => setSelectedVideo(video)}
+      onClick={() => handleOpenVideo(video)}
     >
       <div className="relative overflow-hidden rounded-lg shadow-lg">
         <img
@@ -136,7 +358,7 @@ const App: React.FC = () => {
           <X className="w-6 h-6" />
         </button>
       </div>
-      
+
       <div className="flex-1 flex items-center justify-center relative bg-black">
         <img
           src={video.cover}
@@ -152,16 +374,16 @@ const App: React.FC = () => {
               <Play className="w-12 h-12 text-white fill-current" />
             </button>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 text-center">
               <p className="text-white text-lg">正在播放: {video.title}</p>
-              <div className="bg-white rounded-full p-4 animate-pulse">
+              <div className="bg-white rounded-full p-4 animate-pulse inline-flex">
                 <Play className="w-8 h-8 text-blue-500 fill-current" />
               </div>
               <p className="text-gray-400 text-sm">视频演示模式</p>
             </div>
           )}
         </div>
-        
+
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black px-6 py-4">
           <div className="w-full bg-gray-700 rounded-full h-1 mb-4">
             <div className="bg-gradient-to-r from-blue-500 to-cyan-400 h-1 rounded-full w-1/4"></div>
@@ -229,16 +451,114 @@ const App: React.FC = () => {
     </div>
   );
 
+  const LoginModal: React.FC = () => (
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md rounded-3xl overflow-hidden border border-cyan-400/20 bg-gray-900 shadow-2xl">
+        <div className="relative px-6 py-6 border-b border-gray-800">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-400/10"></div>
+          <div className="relative flex items-start justify-between gap-4">
+            <div>
+              <p className="text-cyan-300 text-sm mb-2">轻量前端模拟登录</p>
+              <h2 className="text-white text-2xl font-bold">登录极光视频</h2>
+              <p className="text-gray-400 text-sm mt-2">当前项目未接入后端，登录状态将保存到 localStorage。</p>
+            </div>
+            <button
+              onClick={closeLoginModal}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleLoginSubmit} className="p-6 space-y-5">
+          {loginHint && (
+            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+              {loginHint}
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 space-y-1">
+            <p>演示账号 1：aurora / aurora@example.com / 13800000000</p>
+            <p>密码：123456</p>
+            <p>演示账号 2：demo / demo@example.com / 13900000000</p>
+            <p>密码：demo123</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm text-gray-300">用户名 / 邮箱 / 手机号</label>
+            <input
+              type="text"
+              value={loginForm.identifier}
+              onChange={(event) => {
+                setLoginForm((prev) => ({ ...prev, identifier: event.target.value }));
+                setLoginErrors((prev) => ({ ...prev, identifier: undefined, submit: undefined }));
+              }}
+              placeholder="请输入登录账号"
+              className="w-full rounded-2xl border border-gray-700 bg-gray-800/80 px-4 py-3 text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+            />
+            {loginErrors.identifier && <p className="text-sm text-rose-400">{loginErrors.identifier}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm text-gray-300">密码</label>
+            <input
+              type="password"
+              value={loginForm.password}
+              onChange={(event) => {
+                setLoginForm((prev) => ({ ...prev, password: event.target.value }));
+                setLoginErrors((prev) => ({ ...prev, password: undefined, submit: undefined }));
+              }}
+              placeholder="请输入密码"
+              className="w-full rounded-2xl border border-gray-700 bg-gray-800/80 px-4 py-3 text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+            />
+            {loginErrors.password && <p className="text-sm text-rose-400">{loginErrors.password}</p>}
+          </div>
+
+          {loginErrors.submit && (
+            <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+              {loginErrors.submit}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between text-sm text-gray-400">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>登录成功后自动持久化保存</span>
+            </div>
+            <span>无后端依赖</span>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={closeLoginModal}
+              className="flex-1 rounded-2xl border border-gray-700 bg-gray-800/80 px-4 py-3 text-white transition hover:bg-gray-700"
+            >
+              稍后再说
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-400 px-4 py-3 font-semibold text-white shadow-lg transition hover:from-blue-600 hover:to-cyan-500 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isSubmitting ? '登录中...' : '立即登录'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950">
-      {/* Header */}
       <header className="fixed top-0 left-0 right-0 bg-gradient-to-b from-gray-950 to-transparent z-40">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-8">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+        <div className="flex items-center justify-between px-6 py-4 gap-4">
+          <div className="flex items-center gap-8 min-w-0">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent whitespace-nowrap">
               极光视频
             </h1>
-            <nav className="flex gap-6">
+            <nav className="hidden lg:flex gap-6">
               {tabs.map((tab) => (
                 <button
                   key={tab}
@@ -260,15 +580,15 @@ const App: React.FC = () => {
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="relative">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="relative hidden md:block">
               <input
                 type="text"
                 placeholder="搜索电影、电视剧..."
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setShowSearchResults(e.target.value.length > 0);
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setShowSearchResults(event.target.value.length > 0);
                 }}
                 onFocus={() => setShowSearchResults(searchQuery.length > 0)}
                 className="bg-gray-800/80 backdrop-blur text-white text-sm px-4 py-2 pl-10 rounded-full w-64 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all"
@@ -281,7 +601,7 @@ const App: React.FC = () => {
                       key={video.id}
                       className="flex items-center gap-3 p-3 hover:bg-gray-700 cursor-pointer transition-colors"
                       onClick={() => {
-                        setSelectedVideo(video);
+                        handleOpenVideo(video);
                         setShowSearchResults(false);
                         setSearchQuery('');
                       }}
@@ -305,23 +625,50 @@ const App: React.FC = () => {
                 </div>
               )}
             </div>
-            <button className="text-gray-400 hover:text-white transition-colors relative">
+            <button className="text-gray-400 hover:text-white transition-colors relative hidden sm:block">
               <Bell className="w-5 h-5" />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
-            <button className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white text-sm px-5 py-2 rounded-full transition-all shadow-lg hover:shadow-xl">
-              <Crown className="w-4 h-4" /> VIP会员
+            <button
+              onClick={() => {
+                if (!authUser) {
+                  openLoginModal('登录后可查看会员权益与专属片单');
+                }
+              }}
+              className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white text-sm px-5 py-2 rounded-full transition-all shadow-lg hover:shadow-xl"
+            >
+              <Crown className="w-4 h-4" /> {authUser ? '会员中心' : 'VIP会员'}
             </button>
-            <button className="text-gray-400 hover:text-white transition-colors">
-              <User className="w-5 h-5" />
-            </button>
+            {authUser ? (
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="hidden xl:flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-100">
+                  <ShieldCheck className="w-4 h-4 text-emerald-300" /> 已登录
+                </div>
+                <div className="flex items-center gap-2 rounded-full border border-gray-700 bg-gray-800/80 px-4 py-2 text-sm text-white">
+                  <User className="w-4 h-4 text-cyan-300" />
+                  <span className="max-w-24 truncate">{authUser.displayName}</span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 rounded-full border border-gray-700 bg-gray-900/80 px-4 py-2 text-sm text-gray-200 transition hover:border-gray-500 hover:text-white"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">退出</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => openLoginModal()}
+                className="flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-100 transition hover:border-cyan-300 hover:bg-cyan-400/20"
+              >
+                <LogIn className="w-4 h-4" /> 登录
+              </button>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="pt-20" onClick={() => setShowSearchResults(false)}>
-        {/* Banner Carousel */}
         <div className="relative h-96 overflow-hidden group">
           <div
             className="flex transition-transform duration-500 h-full"
@@ -336,15 +683,25 @@ const App: React.FC = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent">
                   <div className="flex flex-col justify-center h-full max-w-7xl mx-auto px-8">
-                    <h2 className="text-6xl font-bold text-white mb-4 drop-shadow-2xl">
+                    <h2 className="text-5xl md:text-6xl font-bold text-white mb-4 drop-shadow-2xl">
                       {banner.title}
                     </h2>
-                    <p className="text-gray-300 text-xl mb-8">{banner.subtitle}</p>
-                    <div className="flex gap-4">
-                      <button className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white font-semibold px-8 py-4 rounded-lg transition-all transform hover:scale-105 shadow-xl">
-                        <Play className="w-6 h-6 fill-current" /> 立即播放
+                    <p className="text-gray-300 text-lg md:text-xl mb-3">{banner.subtitle}</p>
+                    <p className="text-sm md:text-base text-gray-400 mb-8 max-w-xl">
+                      {authUser ? `${authUser.displayName}，当前已登录，可继续观看并保留本地登录状态。` : '登录后即可体验前端模拟登录、状态持久化与 VIP 内容拦截。'}
+                    </p>
+                    <div className="flex gap-4 flex-wrap">
+                      <button
+                        onClick={handlePrimaryBannerAction}
+                        className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white font-semibold px-8 py-4 rounded-lg transition-all transform hover:scale-105 shadow-xl"
+                      >
+                        <Play className="w-6 h-6 fill-current" />
+                        {authUser ? '继续观看' : '立即登录'}
                       </button>
-                      <button className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur text-white font-semibold px-8 py-4 rounded-lg transition-all transform hover:scale-105">
+                      <button
+                        onClick={() => handleOpenVideo(videos[0])}
+                        className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur text-white font-semibold px-8 py-4 rounded-lg transition-all transform hover:scale-105"
+                      >
                         查看详情
                       </button>
                     </div>
@@ -365,49 +722,92 @@ const App: React.FC = () => {
           >
             <ChevronRight className="w-6 h-6" />
           </button>
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-            {banners.map((_, idx) => (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            {banners.map((_, index) => (
               <button
-                key={idx}
-                onClick={() => setCurrentSlide(idx)}
-                className={`h-1.5 rounded-full transition-all ${
-                  currentSlide === idx ? 'w-10 bg-gradient-to-r from-blue-400 to-cyan-400' : 'w-4 bg-white/50 hover:bg-white/70'
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`transition-all rounded-full ${
+                  currentSlide === index
+                    ? 'w-8 h-2 bg-gradient-to-r from-blue-400 to-cyan-400'
+                    : 'w-2 h-2 bg-white/50 hover:bg-white/70'
                 }`}
               />
             ))}
           </div>
         </div>
 
-        {/* Category Filter */}
-        <div className="max-w-7xl mx-auto px-8 py-6">
-          <div className="flex gap-3 flex-wrap">
-            {categories.map((cat) => (
+        <div className="max-w-7xl mx-auto px-8 py-8">
+          <section className="mb-8">
+            <div className="rounded-3xl border border-gray-800 bg-gradient-to-r from-gray-900 to-gray-900/70 p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div>
+                <p className="text-sm text-cyan-300 mb-2">当前项目登录状态</p>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  {authUser ? `欢迎回来，${authUser.displayName}` : '你当前还未登录'}
+                </h2>
+                <p className="text-gray-400 text-sm md:text-base">
+                  {authUser
+                    ? `登录时间：${formatLoginTime(authUser.loginAt)}，刷新页面后仍会从 localStorage 恢复登录状态。`
+                    : '点击右上角登录入口，使用演示账号即可体验输入校验、登录状态切换与退出登录。'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {authUser ? (
+                  <>
+                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4" /> 本地登录已生效
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="rounded-2xl border border-gray-700 bg-gray-800/80 px-5 py-3 text-sm text-white transition hover:bg-gray-700"
+                    >
+                      退出登录
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => openLoginModal('请先完成登录，再体验完整播放流程')}
+                    className="rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-400 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-blue-600 hover:to-cyan-500"
+                  >
+                    打开登录表单
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="flex gap-3 overflow-x-auto pb-4 mb-8">
+            {categories.map((category) => (
               <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
-                  activeCategory === cat
+                key={category}
+                onClick={() => setActiveCategory(category)}
+                className={`px-5 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                  activeCategory === category
                     ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white shadow-lg'
-                    : 'bg-gray-800/60 text-gray-400 hover:bg-gray-700 hover:text-white border border-gray-700'
+                    : 'bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700'
                 }`}
               >
-                {cat}
+                {category}
               </button>
             ))}
-          </div>
-        </div>
+          </section>
 
-        {/* Content Grid */}
-        <div className="max-w-7xl mx-auto px-8 pb-12">
-          {/* 当前分类内容 */}
           <section className="mb-10">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-white">
-                {activeCategory === '全部' ? '热播推荐' : 
-                 activeCategory === 'VIP' ? 'VIP精选' :
-                 activeCategory === '免费' ? '免费专区' :
-                 activeCategory === '热门' ? '热门排行' :
-                 activeCategory === '最新' ? '最新上线' : '高分佳作'}
+                {activeCategory === '全部'
+                  ? activeTab === '首页'
+                    ? '热播推荐'
+                    : `${activeTab}精选`
+                  : activeCategory === 'VIP'
+                    ? 'VIP精选'
+                    : activeCategory === '免费'
+                      ? '免费专区'
+                      : activeCategory === '热门'
+                        ? '热门排行'
+                        : activeCategory === '最新'
+                          ? '最新上线'
+                          : '高分佳作'}
               </h2>
               <button className="text-gray-400 hover:text-white text-sm flex items-center gap-1 transition-colors">
                 查看更多 <ChevronRight className="w-4 h-4" />
@@ -420,7 +820,6 @@ const App: React.FC = () => {
             </div>
           </section>
 
-          {/* 电影专区 */}
           <section className="mb-10">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -438,7 +837,6 @@ const App: React.FC = () => {
             </div>
           </section>
 
-          {/* 电视剧专区 */}
           <section className="mb-10">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -456,7 +854,6 @@ const App: React.FC = () => {
             </div>
           </section>
 
-          {/* 动漫专区 */}
           <section className="mb-10">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -474,7 +871,6 @@ const App: React.FC = () => {
             </div>
           </section>
 
-          {/* 综艺专区 */}
           <section className="mb-10">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -492,7 +888,6 @@ const App: React.FC = () => {
             </div>
           </section>
 
-          {/* VIP专区 */}
           <section className="mb-10">
             <div className="bg-gradient-to-r from-amber-900/40 to-yellow-900/40 border border-amber-500/30 rounded-2xl p-6">
               <div className="flex items-center justify-between mb-6">
@@ -500,7 +895,9 @@ const App: React.FC = () => {
                   <Crown className="w-8 h-8 text-amber-400" />
                   <div>
                     <h2 className="text-2xl font-bold text-white">VIP尊享专区</h2>
-                    <p className="text-amber-300 text-sm">精选内容，会员专享</p>
+                    <p className="text-amber-300 text-sm">
+                      {authUser ? '已登录，可直接查看会员专享内容' : '未登录时点击会员内容会先拉起登录表单'}
+                    </p>
                   </div>
                 </div>
                 <button className="text-amber-400 hover:text-amber-300 text-sm flex items-center gap-1 transition-colors">
@@ -517,7 +914,6 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="bg-gray-900/80 border-t border-gray-800 py-10">
         <div className="max-w-7xl mx-auto px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
@@ -583,8 +979,8 @@ const App: React.FC = () => {
         </div>
       </footer>
 
-      {/* Video Player Modal */}
       {selectedVideo && <VideoModal video={selectedVideo} />}
+      {showLoginModal && <LoginModal />}
     </div>
   );
 };
