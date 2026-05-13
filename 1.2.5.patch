@@ -1,0 +1,279 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 8ad439c..359da6f 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,5 +1,5 @@
+ import React, { useState, useEffect } from 'react';
+-import { Search, Bell, User, Play, ChevronLeft, ChevronRight, Crown, Star, X, Volume2, VolumeX, Maximize, Pause, SkipBack, SkipForward } from 'lucide-react';
++import { Search, Bell, User, Play, ChevronLeft, ChevronRight, Crown, Star, X, Volume2, VolumeX, Maximize, Pause, SkipBack, SkipForward, Lock, LogOut, Eye, EyeOff } from 'lucide-react';
+ 
+ interface Video {
+   id: number;
+@@ -12,6 +12,23 @@ interface Video {
+   description?: string;
+ }
+ 
++interface LoginUser {
++  username: string;
++  nickname: string;
++  avatar?: string;
++}
++
++interface LoginForm {
++  username: string;
++  password: string;
++}
++
++interface LoginErrors {
++  username?: string;
++  password?: string;
++  general?: string;
++}
++
+ const App: React.FC = () => {
+   const [activeTab, setActiveTab] = useState('首页');
+   const [searchQuery, setSearchQuery] = useState('');
+@@ -21,6 +38,19 @@ const App: React.FC = () => {
+   const [isMuted, setIsMuted] = useState(false);
+   const [activeCategory, setActiveCategory] = useState('全部');
+   const [showSearchResults, setShowSearchResults] = useState(false);
++  const [isLoggedIn, setIsLoggedIn] = useState(() => {
++    const saved = localStorage.getItem('aurora_user');
++    return !!saved;
++  });
++  const [currentUser, setCurrentUser] = useState<LoginUser | null>(() => {
++    const saved = localStorage.getItem('aurora_user');
++    return saved ? JSON.parse(saved) : null;
++  });
++  const [showLoginModal, setShowLoginModal] = useState(false);
++  const [loginForm, setLoginForm] = useState<LoginForm>({ username: '', password: '' });
++  const [loginErrors, setLoginErrors] = useState<LoginErrors>({});
++  const [showPassword, setShowPassword] = useState(false);
++  const [showUserMenu, setShowUserMenu] = useState(false);
+ 
+   const banners = [
+     { id: 1, title: '流浪地球3', subtitle: '2025年度科幻巨制震撼来袭', image: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=1400&h=500' },
+@@ -69,6 +99,76 @@ const App: React.FC = () => {
+     return () => clearInterval(timer);
+   }, []);
+ 
++  useEffect(() => {
++    if (!showUserMenu) return;
++    const handleClickOutside = () => setShowUserMenu(false);
++    document.addEventListener('click', handleClickOutside);
++    return () => document.removeEventListener('click', handleClickOutside);
++  }, [showUserMenu]);
++
++  const validateLoginForm = (): boolean => {
++    const errors: LoginErrors = {};
++    if (!loginForm.username.trim()) {
++      errors.username = '请输入用户名';
++    } else if (loginForm.username.trim().length < 2) {
++      errors.username = '用户名至少2个字符';
++    }
++    if (!loginForm.password) {
++      errors.password = '请输入密码';
++    } else if (loginForm.password.length < 6) {
++      errors.password = '密码至少6位';
++    }
++    setLoginErrors(errors);
++    return Object.keys(errors).length === 0;
++  };
++
++  const handleLogin = () => {
++    if (!validateLoginForm()) return;
++    const mockUsers: Record<string, { password: string; nickname: string }> = {
++      admin: { password: 'admin123', nickname: '管理员' },
++      demo: { password: 'demo123', nickname: '演示用户' },
++    };
++    const mockUser = mockUsers[loginForm.username.trim()];
++    if (mockUser && mockUser.password === loginForm.password) {
++      const user: LoginUser = {
++        username: loginForm.username.trim(),
++        nickname: mockUser.nickname,
++      };
++      localStorage.setItem('aurora_user', JSON.stringify(user));
++      setCurrentUser(user);
++      setIsLoggedIn(true);
++      setShowLoginModal(false);
++      setLoginForm({ username: '', password: '' });
++      setLoginErrors({});
++    } else if (loginForm.password.length >= 6) {
++      const user: LoginUser = {
++        username: loginForm.username.trim(),
++        nickname: loginForm.username.trim(),
++      };
++      localStorage.setItem('aurora_user', JSON.stringify(user));
++      setCurrentUser(user);
++      setIsLoggedIn(true);
++      setShowLoginModal(false);
++      setLoginForm({ username: '', password: '' });
++      setLoginErrors({});
++    } else {
++      setLoginErrors({ general: '用户名或密码错误' });
++    }
++  };
++
++  const handleLogout = () => {
++    localStorage.removeItem('aurora_user');
++    setCurrentUser(null);
++    setIsLoggedIn(false);
++    setShowUserMenu(false);
++  };
++
++  const openLoginModal = () => {
++    setLoginForm({ username: '', password: '' });
++    setLoginErrors({});
++    setShowLoginModal(true);
++  };
++
+   const nextSlide = () => {
+     setCurrentSlide((prev) => (prev + 1) % banners.length);
+   };
+@@ -229,6 +329,93 @@ const App: React.FC = () => {
+     </div>
+   );
+ 
++  const LoginModal = () => (
++    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowLoginModal(false)}>
++      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
++        <div className="flex items-center justify-between p-6 border-b border-gray-800">
++          <div className="flex items-center gap-3">
++            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl flex items-center justify-center">
++              <User className="w-5 h-5 text-white" />
++            </div>
++            <h2 className="text-white text-xl font-bold">登录极光视频</h2>
++          </div>
++          <button onClick={() => setShowLoginModal(false)} className="text-gray-400 hover:text-white transition-colors">
++            <X className="w-5 h-5" />
++          </button>
++        </div>
++
++        <div className="p-6 space-y-5">
++          {loginErrors.general && (
++            <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm">
++              {loginErrors.general}
++            </div>
++          )}
++
++          <div>
++            <label className="block text-gray-300 text-sm font-medium mb-2">用户名</label>
++            <div className="relative">
++              <User className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
++              <input
++                type="text"
++                value={loginForm.username}
++                onChange={(e) => {
++                  setLoginForm({ ...loginForm, username: e.target.value });
++                  if (loginErrors.username) setLoginErrors({ ...loginErrors, username: undefined });
++                }}
++                placeholder="请输入用户名"
++                className="w-full bg-gray-800/80 text-white text-sm px-4 py-3 pl-10 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all placeholder-gray-500"
++                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
++              />
++            </div>
++            {loginErrors.username && <p className="text-red-400 text-xs mt-1.5">{loginErrors.username}</p>}
++          </div>
++
++          <div>
++            <label className="block text-gray-300 text-sm font-medium mb-2">密码</label>
++            <div className="relative">
++              <Lock className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
++              <input
++                type={showPassword ? 'text' : 'password'}
++                value={loginForm.password}
++                onChange={(e) => {
++                  setLoginForm({ ...loginForm, password: e.target.value });
++                  if (loginErrors.password) setLoginErrors({ ...loginErrors, password: undefined });
++                }}
++                placeholder="请输入密码"
++                className="w-full bg-gray-800/80 text-white text-sm px-4 py-3 pl-10 pr-10 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all placeholder-gray-500"
++                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
++              />
++              <button
++                type="button"
++                onClick={() => setShowPassword(!showPassword)}
++                className="text-gray-500 hover:text-gray-300 absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
++              >
++                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
++              </button>
++            </div>
++            {loginErrors.password && <p className="text-red-400 text-xs mt-1.5">{loginErrors.password}</p>}
++          </div>
++
++          <button
++            onClick={handleLogin}
++            className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white font-semibold py-3 rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
++          >
++            登录
++          </button>
++
++          <div className="text-center">
++            <p className="text-gray-500 text-xs">
++              演示账号：admin / admin123 或 demo / demo123
++            </p>
++            <p className="text-gray-600 text-xs mt-1">
++              也可输入任意用户名 + 6位以上密码自动注册登录
++            </p>
++          </div>
++        </div>
++      </div>
++    </div>
++  );
++
+   return (
+     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950">
+       {/* Header */}
+@@ -312,9 +499,41 @@ const App: React.FC = () => {
+             <button className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white text-sm px-5 py-2 rounded-full transition-all shadow-lg hover:shadow-xl">
+               <Crown className="w-4 h-4" /> VIP会员
+             </button>
+-            <button className="text-gray-400 hover:text-white transition-colors">
+-              <User className="w-5 h-5" />
+-            </button>
++            {isLoggedIn && currentUser ? (
++              <div className="relative">
++                <button
++                  onClick={(e) => { e.stopPropagation(); setShowUserMenu(!showUserMenu); }}
++                  className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
++                >
++                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full flex items-center justify-center text-white text-sm font-bold">
++                    {currentUser.nickname.charAt(0).toUpperCase()}
++                  </div>
++                  <span className="text-sm">{currentUser.nickname}</span>
++                </button>
++                {showUserMenu && (
++                  <div className="absolute right-0 top-full mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-2xl z-50">
++                    <div className="p-3 border-b border-gray-700">
++                      <p className="text-white text-sm font-medium">{currentUser.nickname}</p>
++                      <p className="text-gray-500 text-xs">@{currentUser.username}</p>
++                    </div>
++                    <button
++                      onClick={handleLogout}
++                      className="w-full flex items-center gap-2 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors text-sm"
++                    >
++                      <LogOut className="w-4 h-4" /> 退出登录
++                    </button>
++                  </div>
++                )}
++              </div>
++            ) : (
++              <button
++                onClick={openLoginModal}
++                className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors text-sm"
++              >
++                <User className="w-5 h-5" />
++                <span>登录</span>
++              </button>
++            )}
+           </div>
+         </div>
+       </header>
+@@ -585,6 +804,7 @@ const App: React.FC = () => {
+ 
+       {/* Video Player Modal */}
+       {selectedVideo && <VideoModal video={selectedVideo} />}
++      {showLoginModal && <LoginModal />}
+     </div>
+   );
+ };
