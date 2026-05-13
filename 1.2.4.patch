@@ -1,0 +1,262 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 8ad439c..d8a58ef 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,5 +1,5 @@
+ import React, { useState, useEffect } from 'react';
+-import { Search, Bell, User, Play, ChevronLeft, ChevronRight, Crown, Star, X, Volume2, VolumeX, Maximize, Pause, SkipBack, SkipForward } from 'lucide-react';
++import { Search, Bell, User, Play, ChevronLeft, ChevronRight, Crown, Star, X, Volume2, VolumeX, Maximize, Pause, SkipBack, SkipForward, Lock, Mail, LogOut } from 'lucide-react';
+ 
+ interface Video {
+   id: number;
+@@ -12,6 +12,12 @@ interface Video {
+   description?: string;
+ }
+ 
++interface User {
++  username: string;
++  email: string;
++  isVip: boolean;
++}
++
+ const App: React.FC = () => {
+   const [activeTab, setActiveTab] = useState('首页');
+   const [searchQuery, setSearchQuery] = useState('');
+@@ -21,6 +27,46 @@ const App: React.FC = () => {
+   const [isMuted, setIsMuted] = useState(false);
+   const [activeCategory, setActiveCategory] = useState('全部');
+   const [showSearchResults, setShowSearchResults] = useState(false);
++  
++  // 登录状态管理
++  const [isLoggedIn, setIsLoggedIn] = useState(false);
++  const [user, setUser] = useState<User | null>(null);
++  const [showLoginModal, setShowLoginModal] = useState(false);
++  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
++  const [loginError, setLoginError] = useState('');
++  const [showUserMenu, setShowUserMenu] = useState(false);
++
++  // 模拟用户数据
++  const mockUsers = [
++    { email: 'demo@example.com', password: 'demo123', username: '演示用户', isVip: true },
++    { email: 'test@test.com', password: '123456', username: '测试用户', isVip: false }
++  ];
++
++  // 从 localStorage 读取登录状态
++  useEffect(() => {
++    const savedUser = localStorage.getItem('video_user');
++    if (savedUser) {
++      try {
++        const parsedUser = JSON.parse(savedUser);
++        setUser(parsedUser);
++        setIsLoggedIn(true);
++      } catch (e) {
++        localStorage.removeItem('video_user');
++      }
++    }
++  }, []);
++
++  // 点击外部关闭用户菜单
++  useEffect(() => {
++    const handleClickOutside = (e: MouseEvent) => {
++      const target = e.target as HTMLElement;
++      if (!target.closest('.user-menu-container') && showUserMenu) {
++        setShowUserMenu(false);
++      }
++    };
++    document.addEventListener('mousedown', handleClickOutside);
++    return () => document.removeEventListener('mousedown', handleClickOutside);
++  }, [showUserMenu]);
+ 
+   const banners = [
+     { id: 1, title: '流浪地球3', subtitle: '2025年度科幻巨制震撼来袭', image: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=1400&h=500' },
+@@ -117,6 +163,125 @@ const App: React.FC = () => {
+     </div>
+   );
+ 
++  // 登录处理
++  const handleLogin = (e: React.FormEvent) => {
++    e.preventDefault();
++    setLoginError('');
++
++    // 输入校验
++    if (!loginForm.email || !loginForm.password) {
++      setLoginError('请填写邮箱和密码');
++      return;
++    }
++
++    // 邮箱格式校验
++    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
++    if (!emailRegex.test(loginForm.email)) {
++      setLoginError('请输入有效的邮箱地址');
++      return;
++    }
++
++    // 密码长度校验
++    if (loginForm.password.length < 6) {
++      setLoginError('密码长度至少为6位');
++      return;
++    }
++
++    // 模拟登录验证
++    const matchedUser = mockUsers.find(u => u.email === loginForm.email && u.password === loginForm.password);
++    
++    if (matchedUser) {
++      const { password, ...userWithoutPassword } = matchedUser;
++      setUser(userWithoutPassword);
++      setIsLoggedIn(true);
++      localStorage.setItem('video_user', JSON.stringify(userWithoutPassword));
++      setShowLoginModal(false);
++      setLoginForm({ email: '', password: '' });
++    } else {
++      setLoginError('邮箱或密码错误');
++    }
++  };
++
++  // 登出处理
++  const handleLogout = () => {
++    setUser(null);
++    setIsLoggedIn(false);
++    localStorage.removeItem('video_user');
++    setShowUserMenu(false);
++  };
++
++  // 登录模态框组件
++  const LoginModal: React.FC = () => (
++    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center" onClick={() => setShowLoginModal(false)}>
++      <div className="bg-gray-900 rounded-2xl p-8 w-full max-w-md border border-gray-800 shadow-2xl" onClick={(e) => e.stopPropagation()}>
++        <div className="flex items-center justify-between mb-6">
++          <h2 className="text-2xl font-bold text-white">登录</h2>
++          <button onClick={() => setShowLoginModal(false)} className="text-gray-400 hover:text-white transition-colors">
++            <X className="w-6 h-6" />
++          </button>
++        </div>
++        
++        <form onSubmit={handleLogin} className="space-y-4">
++          <div>
++            <label className="text-gray-300 text-sm font-medium block mb-2">邮箱</label>
++            <div className="relative">
++              <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
++              <input
++                type="email"
++                value={loginForm.email}
++                onChange={(e) => {
++                  setLoginForm({ ...loginForm, email: e.target.value });
++                  setLoginError('');
++                }}
++                placeholder="请输入邮箱"
++                className="w-full bg-gray-800 border border-gray-700 text-white pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
++              />
++            </div>
++          </div>
++          
++          <div>
++            <label className="text-gray-300 text-sm font-medium block mb-2">密码</label>
++            <div className="relative">
++              <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
++              <input
++                type="password"
++                value={loginForm.password}
++                onChange={(e) => {
++                  setLoginForm({ ...loginForm, password: e.target.value });
++                  setLoginError('');
++                }}
++                placeholder="请输入密码"
++                className="w-full bg-gray-800 border border-gray-700 text-white pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
++              />
++            </div>
++          </div>
++          
++          {loginError && (
++            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm p-3 rounded-lg">
++              {loginError}
++            </div>
++          )}
++          
++          <button
++            type="submit"
++            className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white font-semibold py-3 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg"
++          >
++            登录
++          </button>
++        </form>
++        
++        <div className="mt-6 pt-6 border-t border-gray-800">
++          <p className="text-gray-400 text-sm text-center">
++            测试账号：demo@example.com / demo123
++          </p>
++          <p className="text-gray-500 text-xs text-center mt-1">
++            或 test@test.com / 123456
++          </p>
++        </div>
++      </div>
++    </div>
++  );
++
+   const VideoModal: React.FC<{ video: Video }> = ({ video }) => (
+     <div className="fixed inset-0 bg-black/95 z-50 flex flex-col">
+       <div className="flex items-center justify-between p-4 border-b border-gray-800">
+@@ -309,12 +474,48 @@ const App: React.FC = () => {
+               <Bell className="w-5 h-5" />
+               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+             </button>
+-            <button className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white text-sm px-5 py-2 rounded-full transition-all shadow-lg hover:shadow-xl">
+-              <Crown className="w-4 h-4" /> VIP会员
+-            </button>
+-            <button className="text-gray-400 hover:text-white transition-colors">
+-              <User className="w-5 h-5" />
+-            </button>
++            {!isLoggedIn && (
++              <button className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white text-sm px-5 py-2 rounded-full transition-all shadow-lg hover:shadow-xl">
++                <Crown className="w-4 h-4" /> VIP会员
++              </button>
++            )}
++            {isLoggedIn && user && (
++              <div className="relative user-menu-container">
++                <button
++                  onClick={() => setShowUserMenu(!showUserMenu)}
++                  className="flex items-center gap-2 hover:bg-gray-800/80 px-3 py-2 rounded-full transition-colors"
++                >
++                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${user.isVip ? 'bg-gradient-to-r from-amber-500 to-yellow-500' : 'bg-gradient-to-r from-blue-500 to-cyan-400'}`}>
++                    <User className="w-4 h-4 text-white" />
++                  </div>
++                  <span className="text-white text-sm font-medium">{user.username}</span>
++                </button>
++                {showUserMenu && (
++                  <div className="absolute top-full right-0 mt-2 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 min-w-[180px] overflow-hidden">
++                    <div className="px-4 py-3 border-b border-gray-700">
++                      <p className="text-white font-medium">{user.username}</p>
++                      <p className="text-gray-400 text-xs">{user.email}</p>
++                    </div>
++                    <button
++                      onClick={handleLogout}
++                      className="w-full flex items-center gap-2 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors"
++                    >
++                      <LogOut className="w-4 h-4" />
++                      退出登录
++                    </button>
++                  </div>
++                )}
++              </div>
++            )}
++            {!isLoggedIn && (
++              <button
++                onClick={() => setShowLoginModal(true)}
++                className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors hover:bg-gray-800/60 px-4 py-2 rounded-full"
++              >
++                <User className="w-4 h-4" />
++                登录
++              </button>
++            )}
+           </div>
+         </div>
+       </header>
+@@ -585,6 +786,9 @@ const App: React.FC = () => {
+ 
+       {/* Video Player Modal */}
+       {selectedVideo && <VideoModal video={selectedVideo} />}
++      
++      {/* Login Modal */}
++      {showLoginModal && <LoginModal />}
+     </div>
+   );
+ };
